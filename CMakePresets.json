@@ -1,6 +1,10 @@
 {
   "version": 6,
-  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
   "configurePresets": [
     {
       "name": "gcc-base",
@@ -13,29 +17,98 @@
       }
     },
     {
-      "name": "Debug",
+      "name": "debug",
       "inherits": "gcc-base",
       "displayName": "Debug",
       "binaryDir": "${sourceDir}/build/debug",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     },
     {
-      "name": "RelWithDebInfo",
+      "name": "relwithdebinfo",
       "inherits": "gcc-base",
       "displayName": "RelWithDebInfo",
       "binaryDir": "${sourceDir}/build/relwithdebinfo",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
     },
     {
-      "name": "Release",
+      "name": "release",
       "inherits": "gcc-base",
       "displayName": "Release",
       "binaryDir": "${sourceDir}/build/release",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "debug-sanitizers",
+      "inherits": "debug",
+      "displayName": "Debug + Sanitizers",
+      "binaryDir": "${sourceDir}/build/debug-sanitizers",
+      "cacheVariables": {
+        "ENABLE_SANITIZERS": "ON",
+        "ENABLE_GDB_OPTIMIZATION": "ON"
+      }
+    },
+    {
+      "name": "PGO-generate",
+      "inherits": "release",
+      "displayName": "PGO Generate",
+      "binaryDir": "${sourceDir}/build/pgo-generate",
+      "cacheVariables": {
+        "ENABLE_PGO_GENERATE": "ON"
+      }
+    },
+    {
+      "name": "PGO-use",
+      "inherits": "release",
+      "displayName": "PGO Use",
+      "binaryDir": "${sourceDir}/build/pgo-use",
+      "cacheVariables": {
+        "ENABLE_PGO_USE": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "relwithdebinfo",
+      "configurePreset": "relwithdebinfo"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "jobs": 0
+    },
+    {
+      "name": "debug-sanitizers",
+      "configurePreset": "debug-sanitizers"
+    },
+    {
+      "name": "PGO-generate",
+      "configurePreset": "PGO-generate",
+      "jobs": 0
+    },
+    {
+      "name": "PGO-use",
+      "configurePreset": "PGO-use",
+      "jobs": 0
     }
   ],
   "testPresets": [
-    { "name": "Debug",          "configurePreset": "Debug" },
-    { "name": "RelWithDebInfo", "configurePreset": "RelWithDebInfo" }
+    {
+      "name": "debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "relwithdebinfo",
+      "configurePreset": "relwithdebinfo"
+    }
   ]
 }
