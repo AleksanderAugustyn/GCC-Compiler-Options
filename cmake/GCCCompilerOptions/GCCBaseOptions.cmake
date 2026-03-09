@@ -205,16 +205,10 @@ function(gcc_base_apply_options)
     # Target type: EXECUTABLE vs LIBRARY
     # =========================================================================
     if (BASE_TARGET_TYPE STREQUAL "EXECUTABLE")
-        target_compile_options(${BASE_TARGET} INTERFACE
-                $<$<CONFIG:Release>:-fwhole-program>
-        )
-        target_link_options(${BASE_TARGET} INTERFACE
-                $<$<CONFIG:Release>:-fwhole-program>
-        )
+        target_compile_options(${BASE_TARGET} INTERFACE -fPIE)
+        target_link_options(${BASE_TARGET} INTERFACE -pie)
     elseif (BASE_TARGET_TYPE STREQUAL "LIBRARY")
-        target_compile_options(${BASE_TARGET} INTERFACE
-                -fPIC
-        )
+        target_compile_options(${BASE_TARGET} INTERFACE -fPIC)
     endif ()
 
     # =========================================================================
