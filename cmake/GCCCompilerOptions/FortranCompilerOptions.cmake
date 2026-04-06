@@ -114,6 +114,7 @@ function(create_fortran_interface)
             -std=f${FORT_STANDARD}
             -fimplicit-none
             -fmodule-private
+            -frecursive
     )
 
     if (FORT_FREE_FORM)
