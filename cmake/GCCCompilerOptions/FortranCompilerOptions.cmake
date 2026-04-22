@@ -235,7 +235,6 @@ function(create_fortran_interface)
     # =========================================================================
     target_compile_options(${FORT_TARGET} INTERFACE
             $<$<CONFIG:RelWithDebInfo>:-fbacktrace>
-            $<$<CONFIG:RelWithDebInfo>:-frepack-arrays>
             $<$<CONFIG:RelWithDebInfo>:-ffrontend-optimize>
             $<$<CONFIG:RelWithDebInfo>:-ffrontend-loop-interchange>
     )
@@ -246,7 +245,6 @@ function(create_fortran_interface)
     target_compile_options(${FORT_TARGET} INTERFACE
             # Array handling
             $<$<CONFIG:Release>:-fstack-arrays>
-            $<$<CONFIG:Release>:-frepack-arrays>
             $<$<CONFIG:Release>:-fno-realloc-lhs>
             # Procedure optimizations
             $<$<CONFIG:Release>:-faggressive-function-elimination>
