@@ -146,7 +146,7 @@ function(create_fortran_interface)
             -Wpedantic
             -Waliasing
             -Wampersand
-            $<$<OR:$<CONFIG:Debug>>:-Warray-temporaries>
+            $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-Warray-temporaries>
             -Wc-binding-type
             -Wcharacter-truncation
             -Wline-truncation
