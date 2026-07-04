@@ -6,7 +6,7 @@
 #
 # Covers: optimization tiers, debug flags, LTO, PGO, sanitizers, coverage,
 # dead code elimination, hardening, diagnostics, vectorization reports,
-# OpenMP, -fwhole-program/-fPIC gating.
+# OpenMP, -fPIE/-fPIC gating.
 #
 # GCC-only by design. No abstraction for other compilers.
 include_guard(GLOBAL)
@@ -73,19 +73,17 @@ function(gcc_base_apply_options)
     # =========================================================================
     # Diagnostics (all build types)
     # =========================================================================
+    # (-fdiagnostics-show-caret and -fdiagnostics-show-option are GCC 13 defaults)
     target_compile_options(${BASE_TARGET} INTERFACE
             -fdiagnostics-color=auto
-            -fdiagnostics-show-caret
-            -fdiagnostics-show-option
     )
 
     # =========================================================================
     # Debug build flags
     # Reference: https://gcc.gnu.org/onlinedocs/gcc/Debugging-Options.html
     # =========================================================================
+    # (-ggdb3 subsumes -g3; -Og moves to the if/else below)
     target_compile_options(${BASE_TARGET} INTERFACE
-            $<$<CONFIG:Debug>:-Og>
-            $<$<CONFIG:Debug>:-g3>
             $<$<CONFIG:Debug>:-ggdb3>
             $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
             $<$<CONFIG:Debug>:-fvar-tracking>
@@ -104,12 +102,17 @@ function(gcc_base_apply_options)
     )
 
     # =========================================================================
-    # GDB-friendly optimization override (Debug only)
+    # Debug optimization level: -Og normally; -O0 -fno-inline for GDB stepping.
+    # Explicit if/else — never rely on last-wins flag ordering.
     # =========================================================================
     if (BASE_GDB_OPTIMIZATION)
         target_compile_options(${BASE_TARGET} INTERFACE
                 $<$<CONFIG:Debug>:-O0>
                 $<$<CONFIG:Debug>:-fno-inline>
+        )
+    else ()
+        target_compile_options(${BASE_TARGET} INTERFACE
+                $<$<CONFIG:Debug>:-Og>
         )
     endif ()
 
@@ -117,13 +120,12 @@ function(gcc_base_apply_options)
     # RelWithDebInfo build flags
     # Reference: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
     # =========================================================================
+    # (-ggdb3 subsumes -g3; -mtune=native is implied by -march=native)
     target_compile_options(${BASE_TARGET} INTERFACE
             $<$<CONFIG:RelWithDebInfo>:-O2>
-            $<$<CONFIG:RelWithDebInfo>:-g3>
             $<$<CONFIG:RelWithDebInfo>:-ggdb3>
             $<$<CONFIG:RelWithDebInfo>:-fno-omit-frame-pointer>
             $<$<CONFIG:RelWithDebInfo>:-march=native>
-            $<$<CONFIG:RelWithDebInfo>:-mtune=native>
             $<$<CONFIG:RelWithDebInfo>:-funroll-loops>
     )
 
@@ -133,12 +135,11 @@ function(gcc_base_apply_options)
             $<$<CONFIG:RelWithDebInfo>:-freciprocal-math>
     )
 
-    # RelWithDebInfo vectorization
+    # RelWithDebInfo vectorization. -ftree-vectorize, -ftree-slp-vectorize and
+    # -finline-functions are already default at -O2 on GCC 13;
+    # -ftree-loop-distribution is not — keep it.
     target_compile_options(${BASE_TARGET} INTERFACE
-            $<$<CONFIG:RelWithDebInfo>:-ftree-vectorize>
-            $<$<CONFIG:RelWithDebInfo>:-ftree-slp-vectorize>
             $<$<CONFIG:RelWithDebInfo>:-ftree-loop-distribution>
-            $<$<CONFIG:RelWithDebInfo>:-finline-functions>
     )
 
     # =========================================================================
@@ -147,40 +148,30 @@ function(gcc_base_apply_options)
     # =========================================================================
     # Frame pointers stay ON in Release: perf profiling then measures
     # byte-identical production code (cost: one reserved register, <1%).
+    # (-mtune=native is implied by -march=native)
     target_compile_options(${BASE_TARGET} INTERFACE
             $<$<CONFIG:Release>:-O3>
             $<$<CONFIG:Release>:-fno-omit-frame-pointer>
             $<$<CONFIG:Release>:-march=native>
-            $<$<CONFIG:Release>:-mtune=native>
             $<$<CONFIG:Release>:-funroll-loops>
     )
 
-    # Release fast-math
+    # Release fast-math. The umbrella already enables -ffinite-math-only,
+    # -fno-signed-zeros, -fno-trapping-math, -freciprocal-math,
+    # -fassociative-math, -fno-signaling-nans and -fno-math-errno.
     target_compile_options(${BASE_TARGET} INTERFACE
             $<$<CONFIG:Release>:-ffast-math>
-            $<$<CONFIG:Release>:-ffinite-math-only>
-            $<$<CONFIG:Release>:-fno-signed-zeros>
-            $<$<CONFIG:Release>:-fno-trapping-math>
-            $<$<CONFIG:Release>:-freciprocal-math>
-            $<$<CONFIG:Release>:-fassociative-math>
-            $<$<CONFIG:Release>:-fno-signaling-nans>
-            $<$<CONFIG:Release>:-fno-math-errno>
     )
 
-    # Release vectorization
+    # Release vectorization. -ftree-vectorize, -ftree-slp-vectorize,
+    # -ftree-loop-vectorize, -ftree-loop-distribution, -ftree-loop-im and
+    # -fivopts are already default at -O3 on GCC 13.
     target_compile_options(${BASE_TARGET} INTERFACE
-            $<$<CONFIG:Release>:-ftree-vectorize>
-            $<$<CONFIG:Release>:-ftree-slp-vectorize>
-            $<$<CONFIG:Release>:-ftree-loop-vectorize>
-            $<$<CONFIG:Release>:-ftree-loop-distribution>
-            $<$<CONFIG:Release>:-ftree-loop-im>
-            $<$<CONFIG:Release>:-fivopts>
             $<$<CONFIG:Release>:-fprefetch-loop-arrays>
     )
 
-    # Release inlining
+    # Release inlining (-finline-functions is default at -O2 and above)
     target_compile_options(${BASE_TARGET} INTERFACE
-            $<$<CONFIG:Release>:-finline-functions>
             $<$<CONFIG:Release>:-finline-limit=1000>
     )
 
@@ -196,9 +187,9 @@ function(gcc_base_apply_options)
         target_compile_options(${BASE_TARGET} INTERFACE
                 $<$<CONFIG:Release>:-flto=auto>
         )
+        # (-fuse-linker-plugin is default with -flto and a plugin-capable linker)
         target_link_options(${BASE_TARGET} INTERFACE
                 $<$<CONFIG:Release>:-flto=auto>
-                $<$<CONFIG:Release>:-fuse-linker-plugin>
         )
     endif ()
 
@@ -244,11 +235,12 @@ function(gcc_base_apply_options)
     # Sanitizers (Debug only)
     # =========================================================================
     if (BASE_SANITIZERS)
+        # LeakSanitizer is built into ASan — listing leak is redundant
         target_compile_options(${BASE_TARGET} INTERFACE
-                $<$<CONFIG:Debug>:-fsanitize=address,undefined,leak>
+                $<$<CONFIG:Debug>:-fsanitize=address,undefined>
         )
         target_link_options(${BASE_TARGET} INTERFACE
-                $<$<CONFIG:Debug>:-fsanitize=address,undefined,leak>
+                $<$<CONFIG:Debug>:-fsanitize=address,undefined>
         )
     endif ()
 
