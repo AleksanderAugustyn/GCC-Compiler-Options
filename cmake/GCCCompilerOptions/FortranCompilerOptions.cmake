@@ -172,8 +172,6 @@ function(create_fortran_interface)
             -Wunused-label
             -Walign-commons
             -Wfunction-elimination
-            -Wrealloc-lhs
-            -Wrealloc-lhs-all
             -Wcompare-reals
             -Wtarget-lifetime
             -Wzerotrip
@@ -194,15 +192,19 @@ function(create_fortran_interface)
     # Fortran runtime checks (Debug only)
     # Reference: https://gcc.gnu.org/onlinedocs/gfortran/Code-Gen-Options.html
     # =========================================================================
+    # Allocatable reallocation-on-assignment follows F2018 semantics in every
+    # config: -frealloc-lhs is the gfortran default and Release must not
+    # diverge (-fno-realloc-lhs silently kept the old shape).
     target_compile_options(${FORT_TARGET} INTERFACE
             $<$<CONFIG:Debug>:-fcheck=all>
-            $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-frealloc-lhs>
     )
 
     # FPE trapping (Debug)
     target_compile_options(${FORT_TARGET} INTERFACE
             $<$<CONFIG:Debug>:-fbacktrace>
-            $<$<CONFIG:Debug>:-ffpe-trap=invalid,zero,overflow,underflow>
+            # underflow is not trapped: gradual underflow to zero is benign in
+            # exp-heavy physics code and trapping it kills legitimate runs
+            $<$<CONFIG:Debug>:-ffpe-trap=invalid,zero,overflow>
             $<$<CONFIG:Debug>:-ffpe-summary=all>
             $<$<CONFIG:Debug>:-fdump-core>
     )
@@ -245,7 +247,6 @@ function(create_fortran_interface)
     target_compile_options(${FORT_TARGET} INTERFACE
             # Array handling
             $<$<CONFIG:Release>:-fstack-arrays>
-            $<$<CONFIG:Release>:-fno-realloc-lhs>
             # Procedure optimizations
             $<$<CONFIG:Release>:-faggressive-function-elimination>
             $<$<CONFIG:Release>:-ffrontend-optimize>
