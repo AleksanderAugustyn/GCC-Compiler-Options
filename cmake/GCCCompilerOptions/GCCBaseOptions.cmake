@@ -145,13 +145,14 @@ function(gcc_base_apply_options)
     # Release build flags (maximum optimization)
     # Reference: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
     # =========================================================================
+    # Frame pointers stay ON in Release: perf profiling then measures
+    # byte-identical production code (cost: one reserved register, <1%).
     target_compile_options(${BASE_TARGET} INTERFACE
             $<$<CONFIG:Release>:-O3>
             $<$<CONFIG:Release>:-fno-omit-frame-pointer>
             $<$<CONFIG:Release>:-march=native>
             $<$<CONFIG:Release>:-mtune=native>
             $<$<CONFIG:Release>:-funroll-loops>
-            $<$<CONFIG:Release>:-fomit-frame-pointer>
     )
 
     # Release fast-math

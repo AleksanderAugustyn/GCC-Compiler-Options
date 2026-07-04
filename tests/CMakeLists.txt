@@ -32,3 +32,22 @@ target_link_libraries(test_cxx_dummy PRIVATE test_cxx_exe_flags)
 # --- CTest entries ---
 add_test(NAME fortran_compiles COMMAND test_fortran_dummy)
 add_test(NAME cxx_compiles COMMAND test_cxx_dummy)
+
+# --- Resolved-flag dumps + contradiction guard ---
+# file(GENERATE) collapses generator expressions to the active config, giving
+# exactly the per-config flag list consumers will see on the command line.
+foreach (flags_target IN ITEMS
+        test_fortran_lib_flags test_fortran_exe_flags
+        test_fortran_legacy_flags test_cxx_exe_flags)
+    file(GENERATE
+            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/resolved-flags/${flags_target}-$<CONFIG>.txt
+            CONTENT "$<JOIN:$<TARGET_PROPERTY:${flags_target},INTERFACE_COMPILE_OPTIONS>,\n>"
+    )
+endforeach ()
+
+add_test(NAME flag_contradiction_guard
+        COMMAND ${CMAKE_COMMAND}
+        -DFLAGS_DIR=${CMAKE_CURRENT_BINARY_DIR}/resolved-flags
+        -DCONFIG=$<CONFIG>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/check_flag_contradictions.cmake
+)
