@@ -4,6 +4,10 @@ Reusable CMake modules that define compiler flags for GCC-based Fortran and C++ 
 
 Provides interface targets with comprehensive flag sets for Debug, RelWithDebInfo, and Release build types, including optimization tiers, warnings, sanitizers, LTO, PGO, coverage, and OpenMP support.
 
+Supported build types: Debug, RelWithDebInfo, Release (MinSizeRel and custom
+configs receive only the unconditional flags). Flag redundancy decisions are
+verified against GCC 13; see CHANGELOG.md.
+
 ## Requirements
 
 - CMake 3.14+
@@ -18,7 +22,7 @@ include(FetchContent)
 FetchContent_Declare(
     gcc_compiler_options
     GIT_REPOSITORY https://github.com/AleksanderAugustyn/gcc-cmake-options.git
-    GIT_TAG        v1.0.0
+    GIT_TAG        1.5.0
 )
 FetchContent_MakeAvailable(gcc_compiler_options)
 
@@ -57,6 +61,12 @@ include(GCCCompilerOptions/CompilerFlagSummary)
 create_fortran_library_interface(TARGET fortran_lib_flags OPENMP ON)
 create_fortran_executable_interface(TARGET fortran_exe_flags OPENMP ON)
 create_cxx_executable_interface(TARGET cxx_flags STANDARD 17)
+
+# Perf profiling (production-as-built): wire a cache option through
+# PROFILING_SYMBOLS — when ON, Release additionally gets
+# -g -fno-omit-frame-pointer, appended after all other flags.
+# option(ENABLE_PROFILING_SYMBOLS "..." OFF), then per interface:
+#   create_fortran_library_interface(... PROFILING_SYMBOLS ${ENABLE_PROFILING_SYMBOLS})
 
 # Link against them
 target_link_libraries(my_fortran_lib PRIVATE fortran_lib_flags)
