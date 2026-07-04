@@ -18,6 +18,7 @@ function(gcc_base_apply_options)
             LTO PGO_GENERATE PGO_USE
             SANITIZERS COVERAGE DEAD_CODE_ELIMINATION
             GDB_OPTIMIZATION VECTORIZATION_REPORT OPENMP
+            PROFILING_SYMBOLS
     )
     set(multiValueArgs "")
     cmake_parse_arguments(BASE "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -60,6 +61,9 @@ function(gcc_base_apply_options)
     endif ()
     if (NOT DEFINED BASE_OPENMP)
         set(BASE_OPENMP OFF)
+    endif ()
+    if (NOT DEFINED BASE_PROFILING_SYMBOLS)
+        set(BASE_PROFILING_SYMBOLS OFF)
     endif ()
 
     # --- PGO mutual exclusion ---
@@ -273,6 +277,20 @@ function(gcc_base_apply_options)
                 $<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>:-fopt-info-vec-optimized>
                 $<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>:-fopt-info-vec-missed>
                 $<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>:-fopt-info-loop-optimized>
+        )
+    endif ()
+
+    # =========================================================================
+    # Profiling symbols (Release only) — appended after every other base flag
+    # so they win any last-wins interaction; -g does not change codegen, so
+    # the profiled binary stays production-as-built (LTO included).
+    # Release-gated on purpose: Debug/RelWithDebInfo already carry -ggdb3 and
+    # a later plain -g would downgrade debug info from level 3 to 2.
+    # =========================================================================
+    if (BASE_PROFILING_SYMBOLS)
+        target_compile_options(${BASE_TARGET} INTERFACE
+                $<$<CONFIG:Release>:-g>
+                $<$<CONFIG:Release>:-fno-omit-frame-pointer>
         )
     endif ()
 

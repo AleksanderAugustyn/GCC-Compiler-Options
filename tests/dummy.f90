@@ -14,5 +14,9 @@ program dummy
         stop 1
     end if
 
+    ! gfortran does not auto-deallocate main-program allocatables at exit, so
+    ! free it explicitly to keep the probe clean under the sanitizers preset.
+    deallocate(realloc_probe)
+
     print *, "GCCCompilerOptions: Fortran compile test passed."
 end program dummy

@@ -29,6 +29,7 @@ function(create_fortran_interface)
             LTO PGO_GENERATE PGO_USE
             SANITIZERS COVERAGE DEAD_CODE_ELIMINATION
             GDB_OPTIMIZATION VECTORIZATION_REPORT OPENMP
+            PROFILING_SYMBOLS
     )
     set(multiValueArgs "")
     cmake_parse_arguments(FORT "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -85,6 +86,9 @@ function(create_fortran_interface)
     if (NOT DEFINED FORT_OPENMP)
         set(FORT_OPENMP OFF)
     endif ()
+    if (NOT DEFINED FORT_PROFILING_SYMBOLS)
+        set(FORT_PROFILING_SYMBOLS OFF)
+    endif ()
 
     # --- Create interface library ---
     if (NOT TARGET ${FORT_TARGET})
@@ -104,6 +108,7 @@ function(create_fortran_interface)
             GDB_OPTIMIZATION ${FORT_GDB_OPTIMIZATION}
             VECTORIZATION_REPORT ${FORT_VECTORIZATION_REPORT}
             OPENMP ${FORT_OPENMP}
+            PROFILING_SYMBOLS ${FORT_PROFILING_SYMBOLS}
     )
 
     # =========================================================================
@@ -260,6 +265,7 @@ function(create_fortran_library_interface)
             LTO PGO_GENERATE PGO_USE
             SANITIZERS COVERAGE DEAD_CODE_ELIMINATION
             GDB_OPTIMIZATION VECTORIZATION_REPORT OPENMP
+            PROFILING_SYMBOLS
     )
     set(multiValueArgs "")
     cmake_parse_arguments(FORT "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -287,6 +293,7 @@ function(create_fortran_library_interface)
             GDB_OPTIMIZATION ${FORT_GDB_OPTIMIZATION}
             VECTORIZATION_REPORT ${FORT_VECTORIZATION_REPORT}
             OPENMP ${FORT_OPENMP}
+            PROFILING_SYMBOLS ${FORT_PROFILING_SYMBOLS}
     )
 endfunction()
 
@@ -302,6 +309,7 @@ function(create_fortran_executable_interface)
             LTO PGO_GENERATE PGO_USE
             SANITIZERS COVERAGE DEAD_CODE_ELIMINATION
             GDB_OPTIMIZATION VECTORIZATION_REPORT OPENMP
+            PROFILING_SYMBOLS
     )
     set(multiValueArgs "")
     cmake_parse_arguments(FORT "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -328,6 +336,7 @@ function(create_fortran_executable_interface)
             GDB_OPTIMIZATION ${FORT_GDB_OPTIMIZATION}
             VECTORIZATION_REPORT ${FORT_VECTORIZATION_REPORT}
             OPENMP ${FORT_OPENMP}
+            PROFILING_SYMBOLS ${FORT_PROFILING_SYMBOLS}
     )
 endfunction()
 
@@ -339,7 +348,9 @@ function(create_fortran_optimization_only_interface)
     set(oneValueArgs
             TARGET TARGET_TYPE
             LTO PGO_GENERATE PGO_USE
-            COVERAGE DEAD_CODE_ELIMINATION OPENMP
+            SANITIZERS COVERAGE DEAD_CODE_ELIMINATION
+            GDB_OPTIMIZATION VECTORIZATION_REPORT OPENMP
+            PROFILING_SYMBOLS
     )
     set(multiValueArgs "")
     cmake_parse_arguments(FORT "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -366,6 +377,10 @@ function(create_fortran_optimization_only_interface)
             COVERAGE ${FORT_COVERAGE}
             DEAD_CODE_ELIMINATION ${FORT_DEAD_CODE_ELIMINATION}
             OPENMP ${FORT_OPENMP}
+            SANITIZERS ${FORT_SANITIZERS}
+            GDB_OPTIMIZATION ${FORT_GDB_OPTIMIZATION}
+            VECTORIZATION_REPORT ${FORT_VECTORIZATION_REPORT}
+            PROFILING_SYMBOLS ${FORT_PROFILING_SYMBOLS}
     )
 
     message(STATUS "FortranCompilerOptions: Created optimization-only '${FORT_TARGET}' (${FORT_TARGET_TYPE})")

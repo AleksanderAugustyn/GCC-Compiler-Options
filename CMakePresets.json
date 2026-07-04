@@ -70,6 +70,15 @@
       "cacheVariables": {
         "ENABLE_PGO_USE": "ON"
       }
+    },
+    {
+      "name": "profiling",
+      "inherits": "release",
+      "displayName": "Profiling (Release + symbols + frame pointers)",
+      "binaryDir": "${sourceDir}/build/profiling",
+      "cacheVariables": {
+        "ENABLE_PROFILING_SYMBOLS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -99,6 +108,11 @@
       "name": "PGO-use",
       "configurePreset": "PGO-use",
       "jobs": 0
+    },
+    {
+      "name": "profiling",
+      "configurePreset": "profiling",
+      "jobs": 0
     }
   ],
   "testPresets": [
@@ -113,6 +127,10 @@
     {
       "name": "release",
       "configurePreset": "release"
+    },
+    {
+      "name": "profiling",
+      "configurePreset": "profiling"
     }
   ]
 }

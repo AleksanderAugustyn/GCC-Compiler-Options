@@ -28,6 +28,7 @@ function(create_cxx_interface)
             LTO PGO_GENERATE PGO_USE
             SANITIZERS COVERAGE DEAD_CODE_ELIMINATION
             GDB_OPTIMIZATION VECTORIZATION_REPORT OPENMP
+            PROFILING_SYMBOLS
     )
     set(multiValueArgs "")
     cmake_parse_arguments(CXX "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -78,6 +79,9 @@ function(create_cxx_interface)
     if (NOT DEFINED CXX_OPENMP)
         set(CXX_OPENMP OFF)
     endif ()
+    if (NOT DEFINED CXX_PROFILING_SYMBOLS)
+        set(CXX_PROFILING_SYMBOLS OFF)
+    endif ()
 
     # --- Create interface library ---
     if (NOT TARGET ${CXX_TARGET})
@@ -97,6 +101,7 @@ function(create_cxx_interface)
             GDB_OPTIMIZATION ${CXX_GDB_OPTIMIZATION}
             VECTORIZATION_REPORT ${CXX_VECTORIZATION_REPORT}
             OPENMP ${CXX_OPENMP}
+            PROFILING_SYMBOLS ${CXX_PROFILING_SYMBOLS}
     )
 
     # =========================================================================
@@ -206,6 +211,7 @@ function(create_cxx_library_interface)
             LTO PGO_GENERATE PGO_USE
             SANITIZERS COVERAGE DEAD_CODE_ELIMINATION
             GDB_OPTIMIZATION VECTORIZATION_REPORT OPENMP
+            PROFILING_SYMBOLS
     )
     set(multiValueArgs "")
     cmake_parse_arguments(CXX "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -230,6 +236,7 @@ function(create_cxx_library_interface)
             GDB_OPTIMIZATION ${CXX_GDB_OPTIMIZATION}
             VECTORIZATION_REPORT ${CXX_VECTORIZATION_REPORT}
             OPENMP ${CXX_OPENMP}
+            PROFILING_SYMBOLS ${CXX_PROFILING_SYMBOLS}
     )
 endfunction()
 
@@ -244,6 +251,7 @@ function(create_cxx_executable_interface)
             LTO PGO_GENERATE PGO_USE
             SANITIZERS COVERAGE DEAD_CODE_ELIMINATION
             GDB_OPTIMIZATION VECTORIZATION_REPORT OPENMP
+            PROFILING_SYMBOLS
     )
     set(multiValueArgs "")
     cmake_parse_arguments(CXX "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -268,5 +276,6 @@ function(create_cxx_executable_interface)
             GDB_OPTIMIZATION ${CXX_GDB_OPTIMIZATION}
             VECTORIZATION_REPORT ${CXX_VECTORIZATION_REPORT}
             OPENMP ${CXX_OPENMP}
+            PROFILING_SYMBOLS ${CXX_PROFILING_SYMBOLS}
     )
 endfunction()
