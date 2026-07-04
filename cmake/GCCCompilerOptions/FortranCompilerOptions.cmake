@@ -128,57 +128,40 @@ function(create_fortran_interface)
         target_compile_options(${FORT_TARGET} INTERFACE -cpp)
     endif ()
 
-    # =========================================================================
-    # Exception handling (Debug only for Fortran — useful for backtraces)
-    # =========================================================================
-    target_compile_options(${FORT_TARGET} INTERFACE
-            $<$<CONFIG:Debug>:-fexceptions>
-            $<$<CONFIG:Debug>:-fasynchronous-unwind-tables>
-    )
+    # (No -fexceptions: Fortran does not use it — -fbacktrace below is the
+    # backtrace mechanism. -fasynchronous-unwind-tables is the x86-64 default.)
 
     # =========================================================================
     # Fortran warnings
     # Reference: https://gcc.gnu.org/onlinedocs/gfortran/Warning-Options.html
     # =========================================================================
+    # Warnings already enabled by -Wall on GCC 13 (not repeated):
+    #   -Waliasing -Wampersand -Wc-binding-type -Wconversion -Wintrinsic-shadow
+    #   -Wintrinsics-std -Wline-truncation -Wmaybe-uninitialized
+    #   -Wreal-q-constant -Wsurprising -Wtabs -Wtarget-lifetime
+    #   -Wundefined-do-loop -Wuninitialized -Wzerotrip
+    #   -Wunused (with -Wunused-variable/-function/-label)
+    # Enabled by -Wextra: -Wcompare-reals -Wdo-subscript -Wunused-parameter
+    # Default-on: -Walign-commons
     target_compile_options(${FORT_TARGET} INTERFACE
             -Wall
             -Wextra
-            -Wpedantic
-            -Waliasing
-            -Wampersand
             $<$<OR:$<CONFIG:Debug>,$<CONFIG:RelWithDebInfo>>:-Warray-temporaries>
-            -Wc-binding-type
             -Wcharacter-truncation
-            -Wline-truncation
-            -Wconversion
             -Wconversion-extra
             -Wfrontend-loop-interchange
+            -Wfunction-elimination
             -Wimplicit-interface
             -Wimplicit-procedure
             -Winteger-division
-            -Wintrinsics-std
-            -Wreal-q-constant
-            -Wsurprising
-            -Wtabs
-            -Wundefined-do-loop
             -Wunderflow
-            -Wintrinsic-shadow
-            -Wuse-without-only
-            -Wunused
             -Wunused-dummy-argument
-            -Wunused-parameter
-            -Wunused-variable
-            -Wunused-function
-            -Wunused-label
-            -Walign-commons
-            -Wfunction-elimination
-            -Wcompare-reals
-            -Wtarget-lifetime
-            -Wzerotrip
-            -Wdo-subscript
-            -Wmaybe-uninitialized
-            -Wuninitialized
+            -Wuse-without-only
     )
+
+    if (FORT_PEDANTIC_WARNINGS)
+        target_compile_options(${FORT_TARGET} INTERFACE -Wpedantic)
+    endif ()
 
     # Warnings as errors
     if (FORT_WARNINGS_AS_ERRORS)
@@ -226,31 +209,31 @@ function(create_fortran_interface)
     # GDB extras for Fortran (supplements base -O0 -fno-inline)
     # =========================================================================
     if (FORT_GDB_OPTIMIZATION)
+        # (base already adds -fno-inline, which subsumes -fno-inline-small-functions)
         target_compile_options(${FORT_TARGET} INTERFACE
                 $<$<CONFIG:Debug>:-fno-frontend-optimize>
-                $<$<CONFIG:Debug>:-fno-inline-small-functions>
         )
     endif ()
 
     # =========================================================================
     # Fortran-specific optimizations (RelWithDebInfo)
     # =========================================================================
+    # (-ffrontend-optimize and -ffrontend-loop-interchange are default when
+    # optimizing)
     target_compile_options(${FORT_TARGET} INTERFACE
             $<$<CONFIG:RelWithDebInfo>:-fbacktrace>
-            $<$<CONFIG:RelWithDebInfo>:-ffrontend-optimize>
-            $<$<CONFIG:RelWithDebInfo>:-ffrontend-loop-interchange>
     )
 
     # =========================================================================
     # Fortran-specific optimizations (Release)
     # =========================================================================
+    # (-ffrontend-optimize and -ffrontend-loop-interchange are default when
+    # optimizing)
     target_compile_options(${FORT_TARGET} INTERFACE
             # Array handling
             $<$<CONFIG:Release>:-fstack-arrays>
             # Procedure optimizations
             $<$<CONFIG:Release>:-faggressive-function-elimination>
-            $<$<CONFIG:Release>:-ffrontend-optimize>
-            $<$<CONFIG:Release>:-ffrontend-loop-interchange>
     )
 
     # =========================================================================
