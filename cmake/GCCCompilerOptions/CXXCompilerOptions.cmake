@@ -100,17 +100,16 @@ function(create_cxx_interface)
     )
 
     # =========================================================================
-    # C++ dialect
+    # C++ dialect. -std is the single source of the standard — INTERFACE_CXX_*
+    # custom properties do not propagate from INTERFACE libraries and can
+    # silently drift from this flag.
     # =========================================================================
     target_compile_options(${CXX_TARGET} INTERFACE
             -std=c++${CXX_STANDARD}
     )
 
-    # C++ always needs exceptions
-    target_compile_options(${CXX_TARGET} INTERFACE
-            -fexceptions
-            $<$<CONFIG:Debug>:-fasynchronous-unwind-tables>
-    )
+    # (-fexceptions is the C++ default; -fasynchronous-unwind-tables is the
+    # x86-64 ABI default)
 
     # RTTI
     if (NOT CXX_RTTI)
@@ -121,16 +120,16 @@ function(create_cxx_interface)
     # Core warnings
     # Reference: https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html
     # =========================================================================
+    # Warnings already enabled by -Wall/-Wextra on GCC 13 (not repeated):
+    #   -Wuninitialized -Wunused (-Wall); -Wimplicit-fallthrough (-Wextra)
+    # -Wformat-security is enabled by -Wformat=2.
     target_compile_options(${CXX_TARGET} INTERFACE
             -Wall
             -Wextra
-            -Wpedantic
             -Wconversion
             -Wdouble-promotion
             -Wfloat-equal
             -Wformat=2
-            -Wformat-security
-            -Wimplicit-fallthrough
             -Wlogical-op
             -Wmissing-declarations
             -Wmissing-include-dirs
@@ -141,21 +140,24 @@ function(create_cxx_interface)
             -Wswitch-default
             -Wswitch-enum
             -Wundef
-            -Wuninitialized
-            -Wunused
             -Wcast-align
             -Wcast-qual
             -Wnull-dereference
     )
 
+    if (CXX_PEDANTIC_WARNINGS)
+        target_compile_options(${CXX_TARGET} INTERFACE -Wpedantic)
+    endif ()
+
     # =========================================================================
     # C++-specific warnings
     # =========================================================================
+    # -Wnon-virtual-dtor is enabled by -Weffc++ — if -Weffc++ is ever dropped,
+    # re-add -Wnon-virtual-dtor explicitly. -Wdangling-reference is in -Wextra
+    # on GCC 13.
     target_compile_options(${CXX_TARGET} INTERFACE
-            -Wnon-virtual-dtor
             -Woverloaded-virtual
             -Wctor-dtor-privacy
-            -Wdangling-reference
             -Weffc++
             -Wnoexcept
             -Wsign-promo
@@ -189,15 +191,6 @@ function(create_cxx_interface)
                 -fmax-errors=1
         )
     endif ()
-
-    # =========================================================================
-    # C++ standard property
-    # =========================================================================
-    set_target_properties(${CXX_TARGET} PROPERTIES
-            INTERFACE_CXX_STANDARD ${CXX_STANDARD}
-            INTERFACE_CXX_STANDARD_REQUIRED ON
-            INTERFACE_CXX_EXTENSIONS OFF
-    )
 
     message(STATUS "CXXCompilerOptions: Created '${CXX_TARGET}' (C++${CXX_STANDARD}, ${CXX_TARGET_TYPE})")
 endfunction()
