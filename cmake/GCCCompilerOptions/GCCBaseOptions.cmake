@@ -11,6 +11,12 @@
 # GCC-only by design. No abstraction for other compilers.
 include_guard(GLOBAL)
 
+# -march for the optimized configs. Default keeps historical behavior (tune to
+# the build host); portable artifact builds (manylinux wheels) pin an ISA
+# level instead, e.g. -DGCC_OPTS_MARCH=x86-64-v2.
+set(GCC_OPTS_MARCH "native" CACHE STRING
+        "-march= value for Release and RelWithDebInfo builds")
+
 function(gcc_base_apply_options)
     set(options "")
     set(oneValueArgs
@@ -124,12 +130,12 @@ function(gcc_base_apply_options)
     # RelWithDebInfo build flags
     # Reference: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
     # =========================================================================
-    # (-ggdb3 subsumes -g3; -mtune=native is implied by -march=native)
+    # (-ggdb3 subsumes -g3; -mtune is implied by -march only for the native default)
     target_compile_options(${BASE_TARGET} INTERFACE
             $<$<CONFIG:RelWithDebInfo>:-O2>
             $<$<CONFIG:RelWithDebInfo>:-ggdb3>
             $<$<CONFIG:RelWithDebInfo>:-fno-omit-frame-pointer>
-            $<$<CONFIG:RelWithDebInfo>:-march=native>
+            $<$<CONFIG:RelWithDebInfo>:-march=${GCC_OPTS_MARCH}>
             $<$<CONFIG:RelWithDebInfo>:-funroll-loops>
     )
 
@@ -152,11 +158,11 @@ function(gcc_base_apply_options)
     # =========================================================================
     # Frame pointers stay ON in Release: perf profiling then measures
     # byte-identical production code (cost: one reserved register, <1%).
-    # (-mtune=native is implied by -march=native)
+    # (-mtune is implied by -march only for the native default)
     target_compile_options(${BASE_TARGET} INTERFACE
             $<$<CONFIG:Release>:-O3>
             $<$<CONFIG:Release>:-fno-omit-frame-pointer>
-            $<$<CONFIG:Release>:-march=native>
+            $<$<CONFIG:Release>:-march=${GCC_OPTS_MARCH}>
             $<$<CONFIG:Release>:-funroll-loops>
     )
 

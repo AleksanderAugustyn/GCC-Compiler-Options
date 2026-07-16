@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0 — 2026-07-16
+
+### Added
+- **`GCC_OPTS_MARCH` cache variable** (default `native`): sets `-march=` in
+  Release and RelWithDebInfo. The default preserves behavior for all existing
+  consumers; portable artifact builds (manylinux wheels) pin an ISA level,
+  e.g. `-DGCC_OPTS_MARCH=x86-64-v2`. Guarded by `flag_contradiction_guard`
+  (`EXPECT_MARCH`).
+
 ## 1.5.0 — 2026-07-04
 
 Flags audited against GCC 13.3.0 (empirically, via `gcc -Q --help` diffs and
