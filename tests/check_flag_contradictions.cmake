@@ -6,7 +6,7 @@
 #
 # Usage:
 #   cmake -DFLAGS_DIR=<dir> -DCONFIG=<config> [-DEXPECT_PROFILING_G=ON]
-#         -P check_flag_contradictions.cmake
+#         [-DEXPECT_MARCH=<arch>] -P check_flag_contradictions.cmake
 
 if (NOT DEFINED FLAGS_DIR OR NOT DEFINED CONFIG)
     message(FATAL_ERROR "FLAGS_DIR and CONFIG are required")
@@ -46,6 +46,15 @@ foreach (flag_file IN LISTS flag_files)
         if (EXPECT_PROFILING_G AND NOT "-g" IN_LIST flags)
             message(FATAL_ERROR
                     "${flag_file}: profiling build must carry -g in Release")
+        endif ()
+    endif ()
+
+    # -march substitution guard: optimized configs must carry exactly the
+    # requested arch (skipped when EXPECT_MARCH is empty/unset).
+    if (EXPECT_MARCH AND (CONFIG STREQUAL "Release" OR CONFIG STREQUAL "RelWithDebInfo"))
+        if (NOT "-march=${EXPECT_MARCH}" IN_LIST flags)
+            message(FATAL_ERROR
+                    "${flag_file}: expected -march=${EXPECT_MARCH} in ${CONFIG} flags")
         endif ()
     endif ()
 endforeach ()

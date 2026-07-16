@@ -69,5 +69,6 @@ add_test(NAME flag_contradiction_guard
         -DFLAGS_DIR=${CMAKE_CURRENT_BINARY_DIR}/resolved-flags
         -DCONFIG=$<CONFIG>
         -DEXPECT_PROFILING_G=${ENABLE_PROFILING_SYMBOLS}
+        -DEXPECT_MARCH=${GCC_OPTS_MARCH}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/check_flag_contradictions.cmake
 )
