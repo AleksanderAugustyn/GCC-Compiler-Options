@@ -15,6 +15,12 @@
 - `GCC_OPTS_MARCH` now defaults to the empty string ("the profile decides")
   rather than `native`.
 
+  Build trees configured by 1.6.0 carry `GCC_OPTS_MARCH:STRING=native` in their
+  `CMakeCache.txt`. A one-time migration clears that inherited default (with a
+  status message) so an in-place upgrade does not silently keep shipping
+  host-tuned code. It fires only for a value restored from an existing cache —
+  a `-DGCC_OPTS_MARCH=native` passed on the configure line is always honoured.
+
 ### Added
 
 - `GCC_OPTS_PROFILE` (`portable` | `performance`). Invalid values are a

@@ -25,6 +25,13 @@ if (NOT GCC_OPTS_PROFILE STREQUAL "portable"
             "'performance', got '${GCC_OPTS_PROFILE}'")
 endif ()
 
+# A value passed as -DGCC_OPTS_MARCH=... on *this* configure line is typed
+# UNINITIALIZED until the set() below claims it; one restored from an existing
+# CMakeCache.txt is already typed STRING. That difference is what lets the
+# migration below tell "the user just asked for this" from "1.6.0 wrote this
+# default years ago" — read it before set() overwrites the type.
+get_property(_gcc_opts_march_type CACHE GCC_OPTS_MARCH PROPERTY TYPE)
+
 # Escape hatch. Empty means "the profile decides". Any non-empty value wins
 # outright — cluster partitions still need per-partition ISA pins
 # (INTEL_HASWELL is AVX2-only, INTEL_CASCADE has AVX-512).
@@ -38,7 +45,12 @@ set(GCC_OPTS_MARCH "" CACHE STRING
 # pin, the escape hatch would win, and the tree would silently keep shipping
 # host-tuned code — exactly the failure this release exists to prevent.
 # GCC_OPTS_CACHE_GENERATION marks a cache that has already been migrated.
-if (NOT DEFINED GCC_OPTS_CACHE_GENERATION AND GCC_OPTS_MARCH STREQUAL "native")
+#
+# The UNINITIALIZED check keeps "explicit always wins" intact: a fresh
+# -DGCC_OPTS_MARCH=native is honoured, and only a value inherited from an
+# earlier configure is treated as the stale 1.6.0 default.
+if (NOT DEFINED GCC_OPTS_CACHE_GENERATION AND GCC_OPTS_MARCH STREQUAL "native"
+        AND NOT _gcc_opts_march_type STREQUAL "UNINITIALIZED")
     message(STATUS
             "GCCCompilerOptions: clearing the inherited 1.6.0 GCC_OPTS_MARCH=native "
             "default so the portable profile applies. Set "
