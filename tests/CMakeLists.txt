@@ -64,11 +64,38 @@ foreach (flags_target IN ITEMS
     )
 endforeach ()
 
+# Pick the compiler version from whichever language the consumer enabled —
+# this test build enables both, Fortran first.
+if (CMAKE_Fortran_COMPILER_VERSION)
+    set(GUARD_GCC_VERSION "${CMAKE_Fortran_COMPILER_VERSION}")
+else ()
+    set(GUARD_GCC_VERSION "${CMAKE_CXX_COMPILER_VERSION}")
+endif ()
+
 add_test(NAME flag_contradiction_guard
         COMMAND ${CMAKE_COMMAND}
         -DFLAGS_DIR=${CMAKE_CURRENT_BINARY_DIR}/resolved-flags
         -DCONFIG=$<CONFIG>
         -DEXPECT_PROFILING_G=${ENABLE_PROFILING_SYMBOLS}
         -DEXPECT_MARCH=${GCC_OPTS_MARCH}
+        -DEXPECT_PROFILE=${GCC_OPTS_PROFILE}
+        -DEXPECT_GCC_VERSION=${GUARD_GCC_VERSION}
+        -DEXPECT_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/check_flag_contradictions.cmake
 )
+
+# --- Ninja preprocessing regression (agenda item 10) ---
+# Nested CMake: the bug only appears under the Ninja generator, so it cannot be
+# reached from this build's own generator.
+option(GCC_OPTS_REQUIRE_NINJA_TEST "Fail instead of skipping when ninja is absent" OFF)
+
+add_test(NAME ninja_preprocess_guard
+        COMMAND ${CMAKE_COMMAND}
+        -DFIXTURE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/ninja-preprocess-fixture
+        -DWORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/ninja-preprocess-work
+        -DGCC_OPTS_CMAKE_DIR=${CMAKE_SOURCE_DIR}/cmake
+        -DREQUIRE_NINJA=${GCC_OPTS_REQUIRE_NINJA_TEST}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/run_ninja_preprocess_test.cmake
+)
+set_tests_properties(ninja_preprocess_guard PROPERTIES
+        SKIP_REGULAR_EXPRESSION "SKIPPED:")

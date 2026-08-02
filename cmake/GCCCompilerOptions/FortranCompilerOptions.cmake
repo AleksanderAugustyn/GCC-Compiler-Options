@@ -129,8 +129,20 @@ function(create_fortran_interface)
         )
     endif ()
 
-    if (FORT_PREPROCESSOR)
-        target_compile_options(${FORT_TARGET} INTERFACE -cpp)
+    # CMake supplies Fortran preprocessing itself in two situations, and adding
+    # our own -cpp on top of its -fpreprocessed re-lexes an already-preprocessed
+    # file in C mode — C90 comment rules then hit Fortran comments (a URL's "//"
+    # is enough) and -Werror escalates them:
+    #   * Ninja, always: the module-dependency scan emits a fully preprocessed
+    #     <src>-pp.f08 for every Fortran target, whatever Fortran_PREPROCESS
+    #     says, and compiles it with -fpreprocessed.
+    #   * Makefiles with Fortran_PREPROCESS ON: CMake adds -cpp itself.
+    # Only Makefiles with the property unset still needs our -cpp. The
+    # TARGET_PROPERTY genex evaluates against the consuming target at generate
+    # time, so it is immune to when the consumer sets the variable.
+    if (FORT_PREPROCESSOR AND NOT CMAKE_GENERATOR MATCHES "Ninja")
+        target_compile_options(${FORT_TARGET} INTERFACE
+                $<$<NOT:$<BOOL:$<TARGET_PROPERTY:Fortran_PREPROCESS>>>:-cpp>)
     endif ()
 
     # (No -fexceptions: Fortran does not use it — -fbacktrace below is the

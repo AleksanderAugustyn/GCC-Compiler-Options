@@ -44,6 +44,24 @@
       }
     },
     {
+      "name": "release-portable",
+      "inherits": "release",
+      "displayName": "Release (portable ISA floor)",
+      "binaryDir": "${sourceDir}/build/release-portable",
+      "cacheVariables": {
+        "GCC_OPTS_PROFILE": "portable"
+      }
+    },
+    {
+      "name": "release-performance",
+      "inherits": "release",
+      "displayName": "Release (host-tuned)",
+      "binaryDir": "${sourceDir}/build/release-performance",
+      "cacheVariables": {
+        "GCC_OPTS_PROFILE": "performance"
+      }
+    },
+    {
       "name": "debug-sanitizers",
       "inherits": "debug",
       "displayName": "Debug + Sanitizers",
@@ -96,6 +114,16 @@
       "jobs": 0
     },
     {
+      "name": "release-portable",
+      "configurePreset": "release-portable",
+      "jobs": 0
+    },
+    {
+      "name": "release-performance",
+      "configurePreset": "release-performance",
+      "jobs": 0
+    },
+    {
       "name": "debug-sanitizers",
       "configurePreset": "debug-sanitizers"
     },
@@ -127,6 +155,14 @@
     {
       "name": "release",
       "configurePreset": "release"
+    },
+    {
+      "name": "release-portable",
+      "configurePreset": "release-portable"
+    },
+    {
+      "name": "release-performance",
+      "configurePreset": "release-performance"
     },
     {
       "name": "profiling",

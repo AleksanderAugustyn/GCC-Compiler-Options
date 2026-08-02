@@ -6,7 +6,9 @@
 #
 # Usage:
 #   cmake -DFLAGS_DIR=<dir> -DCONFIG=<config> [-DEXPECT_PROFILING_G=ON]
-#         [-DEXPECT_MARCH=<arch>] -P check_flag_contradictions.cmake
+#         [-DEXPECT_MARCH=<arch>] -DEXPECT_PROFILE=<portable|performance>
+#         -DEXPECT_GCC_VERSION=<ver> -DEXPECT_SYSTEM_PROCESSOR=<proc>
+#         -P check_flag_contradictions.cmake
 
 if (NOT DEFINED FLAGS_DIR OR NOT DEFINED CONFIG)
     message(FATAL_ERROR "FLAGS_DIR and CONFIG are required")
@@ -49,12 +51,97 @@ foreach (flag_file IN LISTS flag_files)
         endif ()
     endif ()
 
-    # -march substitution guard: optimized configs must carry exactly the
-    # requested arch (skipped when EXPECT_MARCH is empty/unset).
-    if (EXPECT_MARCH AND (CONFIG STREQUAL "Release" OR CONFIG STREQUAL "RelWithDebInfo"))
-        if (NOT "-march=${EXPECT_MARCH}" IN_LIST flags)
+    # --- ISA/tuning guard (optimized configs only) ---
+    if (CONFIG STREQUAL "Release" OR CONFIG STREQUAL "RelWithDebInfo")
+        # Collect, don't substring-match: "-march=haswell -march=native" would
+        # satisfy any single is-X-present check while ignoring the pin.
+        set(march_values "")
+        set(mtune_values "")
+        foreach (flag IN LISTS flags)
+            if (flag MATCHES "^-march=(.+)$")
+                list(APPEND march_values "${CMAKE_MATCH_1}")
+            elseif (flag MATCHES "^-mtune=(.+)$")
+                list(APPEND mtune_values "${CMAKE_MATCH_1}")
+            endif ()
+        endforeach ()
+        list(LENGTH march_values n_march)
+        list(LENGTH mtune_values n_mtune)
+
+        if (n_march GREATER 1)
             message(FATAL_ERROR
-                    "${flag_file}: expected -march=${EXPECT_MARCH} in ${CONFIG} flags")
+                    "${flag_file}: ${n_march} -march= flags (${march_values}) — "
+                    "the last one silently wins")
+        endif ()
+        if (n_mtune GREATER 1)
+            message(FATAL_ERROR
+                    "${flag_file}: ${n_mtune} -mtune= flags (${mtune_values}) — "
+                    "the last one silently wins")
+        endif ()
+
+        if (EXPECT_MARCH)
+            # Explicit override: exactly the requested arch, and no profile
+            # -mtune, because -march=<cpu> already implies -mtune=<cpu>.
+            if (NOT march_values STREQUAL "${EXPECT_MARCH}")
+                message(FATAL_ERROR
+                        "${flag_file}: expected -march=${EXPECT_MARCH}, got "
+                        "'${march_values}'")
+            endif ()
+            if (mtune_values)
+                message(FATAL_ERROR
+                        "${flag_file}: explicit GCC_OPTS_MARCH must not carry a "
+                        "profile -mtune, got '${mtune_values}'")
+            endif ()
+        elseif (EXPECT_PROFILE STREQUAL "performance")
+            if (NOT march_values STREQUAL "native")
+                message(FATAL_ERROR
+                        "${flag_file}: performance profile expects -march=native, "
+                        "got '${march_values}'")
+            endif ()
+            if (mtune_values)
+                message(FATAL_ERROR
+                        "${flag_file}: performance profile must not set -mtune, "
+                        "got '${mtune_values}'")
+            endif ()
+        elseif (EXPECT_PROFILE STREQUAL "portable")
+            if (NOT EXPECT_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
+                if (march_values OR mtune_values)
+                    message(FATAL_ERROR
+                            "${flag_file}: portable profile on "
+                            "${EXPECT_SYSTEM_PROCESSOR} must emit no -march/-mtune, "
+                            "got '${march_values}' '${mtune_values}'")
+                endif ()
+            elseif (EXPECT_GCC_VERSION AND EXPECT_GCC_VERSION VERSION_GREATER_EQUAL 11)
+                # Accepting either spelling regardless of version would let an
+                # implementation that always emits nehalem pass on GCC 13.
+                if (NOT march_values STREQUAL "x86-64-v2")
+                    message(FATAL_ERROR
+                            "${flag_file}: portable profile on GCC "
+                            "${EXPECT_GCC_VERSION} expects -march=x86-64-v2, got "
+                            "'${march_values}'")
+                endif ()
+                if (mtune_values)
+                    message(FATAL_ERROR
+                            "${flag_file}: -march=x86-64-v2 already implies "
+                            "-mtune=generic, got redundant '${mtune_values}'")
+                endif ()
+            else ()
+                if (NOT march_values STREQUAL "nehalem")
+                    message(FATAL_ERROR
+                            "${flag_file}: portable profile on GCC "
+                            "${EXPECT_GCC_VERSION} expects -march=nehalem, got "
+                            "'${march_values}'")
+                endif ()
+                if (NOT mtune_values STREQUAL "generic")
+                    message(FATAL_ERROR
+                            "${flag_file}: -march=nehalem implies -mtune=nehalem; "
+                            "portable must restore -mtune=generic, got "
+                            "'${mtune_values}'")
+                endif ()
+            endif ()
+        else ()
+            message(FATAL_ERROR
+                    "${flag_file}: EXPECT_PROFILE must be 'portable' or "
+                    "'performance', got '${EXPECT_PROFILE}'")
         endif ()
     endif ()
 endforeach ()

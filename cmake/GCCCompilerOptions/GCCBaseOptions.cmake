@@ -11,11 +11,109 @@
 # GCC-only by design. No abstraction for other compilers.
 include_guard(GLOBAL)
 
-# -march for the optimized configs. Default keeps historical behavior (tune to
-# the build host); portable artifact builds (manylinux wheels) pin an ISA
-# level instead, e.g. -DGCC_OPTS_MARCH=x86-64-v2.
-set(GCC_OPTS_MARCH "native" CACHE STRING
-        "-march= value for Release and RelWithDebInfo builds")
+# Build intent. The profile names what the build is *for*; it resolves to
+# -march/-mtune below. Default is portable so that host-tuned codegen — which
+# SIGILLs on any machine older than the build host — is always a conscious act.
+set(GCC_OPTS_PROFILE "portable" CACHE STRING
+        "Build intent: portable (safe ISA floor) or performance (host-tuned)")
+set_property(CACHE GCC_OPTS_PROFILE PROPERTY STRINGS portable performance)
+
+if (NOT GCC_OPTS_PROFILE STREQUAL "portable"
+        AND NOT GCC_OPTS_PROFILE STREQUAL "performance")
+    message(FATAL_ERROR
+            "GCCCompilerOptions: GCC_OPTS_PROFILE must be 'portable' or "
+            "'performance', got '${GCC_OPTS_PROFILE}'")
+endif ()
+
+# A value passed as -DGCC_OPTS_MARCH=... on *this* configure line is typed
+# UNINITIALIZED until the set() below claims it; one restored from an existing
+# CMakeCache.txt is already typed STRING. That difference is what lets the
+# migration below tell "the user just asked for this" from "1.6.0 wrote this
+# default years ago" — read it before set() overwrites the type.
+get_property(_gcc_opts_march_type CACHE GCC_OPTS_MARCH PROPERTY TYPE)
+
+# Escape hatch. Empty means "the profile decides". Any non-empty value wins
+# outright — cluster partitions still need per-partition ISA pins
+# (INTEL_HASWELL is AVX2-only, INTEL_CASCADE has AVX-512).
+set(GCC_OPTS_MARCH "" CACHE STRING
+        "Explicit -march= for Release/RelWithDebInfo; empty means the profile decides")
+
+# --- 1.6.0 -> 2.0.0 cache migration ---
+# In 1.6.0 GCC_OPTS_MARCH defaulted to "native", so every build tree configured
+# with 1.6.0 has GCC_OPTS_MARCH:STRING=native sitting in its CMakeCache.txt.
+# Without this, upgrading in place would read that stale default as an explicit
+# pin, the escape hatch would win, and the tree would silently keep shipping
+# host-tuned code — exactly the failure this release exists to prevent.
+# GCC_OPTS_CACHE_GENERATION marks a cache that has already been migrated.
+#
+# The UNINITIALIZED check keeps "explicit always wins" intact: a fresh
+# -DGCC_OPTS_MARCH=native is honoured, and only a value inherited from an
+# earlier configure is treated as the stale 1.6.0 default.
+if (NOT DEFINED GCC_OPTS_CACHE_GENERATION AND GCC_OPTS_MARCH STREQUAL "native"
+        AND NOT _gcc_opts_march_type STREQUAL "UNINITIALIZED")
+    message(STATUS
+            "GCCCompilerOptions: clearing the inherited 1.6.0 GCC_OPTS_MARCH=native "
+            "default so the portable profile applies. Set "
+            "GCC_OPTS_PROFILE=performance for host-tuned builds, or re-pass "
+            "-DGCC_OPTS_MARCH=native to force it explicitly.")
+    set(GCC_OPTS_MARCH "" CACHE STRING
+            "Explicit -march= for Release/RelWithDebInfo; empty means the profile decides"
+            FORCE)
+endif ()
+set(GCC_OPTS_CACHE_GENERATION 2 CACHE INTERNAL
+        "gcc-opts cache schema generation; bumped when a default changes meaning")
+
+# Resolve build intent to bare -march/-mtune values (no leading flag text).
+# Sets both named variables in the caller's scope; either may be empty.
+#
+# Called from inside gcc_base_apply_options() rather than at module scope
+# because that is where the consumer's compiler version is known — gcc-opts'
+# own project() declares LANGUAGES NONE.
+function(_gcc_opts_resolve_isa out_march out_mtune)
+    # Explicit pin wins, and suppresses the profile's -mtune: -march=<cpu>
+    # already implies -mtune=<cpu>, which is what a partition pin wants.
+    if (GCC_OPTS_MARCH)
+        set(${out_march} "${GCC_OPTS_MARCH}" PARENT_SCOPE)
+        set(${out_mtune} "" PARENT_SCOPE)
+        return()
+    endif ()
+
+    if (GCC_OPTS_PROFILE STREQUAL "performance")
+        set(${out_march} "native" PARENT_SCOPE)
+        set(${out_mtune} "" PARENT_SCOPE)
+        return()
+    endif ()
+
+    # Both portable spellings are x86-only. Elsewhere the generic ABI baseline
+    # is already portable, so emitting nothing is the correct portable answer —
+    # not an error.
+    if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64)$")
+        message(STATUS
+                "GCCCompilerOptions: portable profile emits no -march on "
+                "${CMAKE_SYSTEM_PROCESSOR}; set GCC_OPTS_MARCH to pin one")
+        set(${out_march} "" PARENT_SCOPE)
+        set(${out_mtune} "" PARENT_SCOPE)
+        return()
+    endif ()
+
+    if (CMAKE_Fortran_COMPILER_VERSION)
+        set(gcc_version "${CMAKE_Fortran_COMPILER_VERSION}")
+    else ()
+        set(gcc_version "${CMAKE_CXX_COMPILER_VERSION}")
+    endif ()
+
+    # -march=x86-64-v2 needs GCC 11 — devtoolset-10 in manylinux2014 predates
+    # the psABI level names. nehalem is the same feature floor in GCC-10
+    # vocabulary, but unlike x86-64-v2 it also pins -mtune=nehalem, so generic
+    # tuning has to be restored explicitly.
+    if (gcc_version AND gcc_version VERSION_GREATER_EQUAL 11)
+        set(${out_march} "x86-64-v2" PARENT_SCOPE)
+        set(${out_mtune} "" PARENT_SCOPE)
+    else ()
+        set(${out_march} "nehalem" PARENT_SCOPE)
+        set(${out_mtune} "generic" PARENT_SCOPE)
+    endif ()
+endfunction()
 
 function(gcc_base_apply_options)
     set(options "")
@@ -130,12 +228,12 @@ function(gcc_base_apply_options)
     # RelWithDebInfo build flags
     # Reference: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
     # =========================================================================
-    # (-ggdb3 subsumes -g3; -mtune is implied by -march only for the native default)
+    # (-ggdb3 subsumes -g3)
+    # (-mtune comes from _gcc_opts_resolve_isa when the spelling needs it)
     target_compile_options(${BASE_TARGET} INTERFACE
             $<$<CONFIG:RelWithDebInfo>:-O2>
             $<$<CONFIG:RelWithDebInfo>:-ggdb3>
             $<$<CONFIG:RelWithDebInfo>:-fno-omit-frame-pointer>
-            $<$<CONFIG:RelWithDebInfo>:-march=${GCC_OPTS_MARCH}>
             $<$<CONFIG:RelWithDebInfo>:-funroll-loops>
     )
 
@@ -158,11 +256,10 @@ function(gcc_base_apply_options)
     # =========================================================================
     # Frame pointers stay ON in Release: perf profiling then measures
     # byte-identical production code (cost: one reserved register, <1%).
-    # (-mtune is implied by -march only for the native default)
+    # (-mtune comes from _gcc_opts_resolve_isa when the spelling needs it)
     target_compile_options(${BASE_TARGET} INTERFACE
             $<$<CONFIG:Release>:-O3>
             $<$<CONFIG:Release>:-fno-omit-frame-pointer>
-            $<$<CONFIG:Release>:-march=${GCC_OPTS_MARCH}>
             $<$<CONFIG:Release>:-funroll-loops>
     )
 
@@ -189,6 +286,23 @@ function(gcc_base_apply_options)
     target_compile_options(${BASE_TARGET} INTERFACE
             $<$<CONFIG:Release>:-malign-data=cacheline>
     )
+
+    # =========================================================================
+    # ISA and tuning (Release + RelWithDebInfo) — see _gcc_opts_resolve_isa.
+    # Debug deliberately carries no -march.
+    # =========================================================================
+    _gcc_opts_resolve_isa(isa_march isa_mtune)
+
+    if (isa_march)
+        target_compile_options(${BASE_TARGET} INTERFACE
+                $<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>:-march=${isa_march}>
+        )
+    endif ()
+    if (isa_mtune)
+        target_compile_options(${BASE_TARGET} INTERFACE
+                $<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>:-mtune=${isa_mtune}>
+        )
+    endif ()
 
     # =========================================================================
     # LTO (Release only)
