@@ -1,5 +1,43 @@
 # Changelog
 
+## 2.0.0
+
+### Breaking
+
+- **Release and RelWithDebInfo now default to a portable ISA floor**
+  (`-march=x86-64-v2`, or `-march=nehalem -mtune=generic` on GCC < 11) instead of
+  `-march=native`. Host-tuned codegen is now opt-in.
+
+  **Migration:** set `GCC_OPTS_PROFILE=performance` to restore 1.6.0 behaviour.
+  Builds that already pin `GCC_OPTS_MARCH` explicitly are unaffected — the pin
+  still wins.
+
+- `GCC_OPTS_MARCH` now defaults to the empty string ("the profile decides")
+  rather than `native`.
+
+### Added
+
+- `GCC_OPTS_PROFILE` (`portable` | `performance`). Invalid values are a
+  configure-time error.
+- `release-portable` and `release-performance` presets.
+- `ninja_preprocess_guard` test: a nested-CMake Ninja build that reproduces the
+  `-cpp`/`-fpreprocessed` regression. Skipped when ninja is absent unless
+  `GCC_OPTS_REQUIRE_NINJA_TEST=ON`.
+
+### Fixed
+
+- Fortran targets no longer receive `-cpp` where CMake already drives
+  preprocessing. Under Ninja, CMake's module-dependency scan preprocesses every
+  Fortran target and compiles the result with `-fpreprocessed`; the extra `-cpp`
+  re-lexed it in C mode, so a `//` in a Fortran comment (a URL) tripped
+  "C++ style comments are not allowed in ISO C90" and `-Werror` escalated it.
+  This broke `pip install` from sdists, which build with Ninja.
+
+### Guard
+
+- The flag guard now counts `-march=`/`-mtune=` occurrences rather than
+  substring-matching, and asserts the version-correct portable spelling.
+
 ## 1.6.0 — 2026-07-16
 
 ### Added

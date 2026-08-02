@@ -22,7 +22,7 @@ include(FetchContent)
 FetchContent_Declare(
     gcc_compiler_options
     GIT_REPOSITORY https://github.com/AleksanderAugustyn/gcc-cmake-options.git
-    GIT_TAG        1.5.0
+    GIT_TAG        2.0.0
 )
 FetchContent_MakeAvailable(gcc_compiler_options)
 
@@ -44,6 +44,36 @@ include(GCCCompilerOptions/FortranCompilerOptions)
 include(GCCCompilerOptions/CXXCompilerOptions)
 include(GCCCompilerOptions/CompilerFlagSummary)
 ```
+
+## Build profiles
+
+`GCC_OPTS_PROFILE` names what the build is *for*. It resolves to `-march` and
+`-mtune` for Release and RelWithDebInfo; Debug is unaffected.
+
+| value | GCC >= 11 | GCC < 11 | use for |
+|---|---|---|---|
+| `portable` (default) | `-march=x86-64-v2` | `-march=nehalem -mtune=generic` | published wheels, anything that runs on a machine you do not control |
+| `performance` | `-march=native` | `-march=native` | in-house perf-critical builds on the machine that will run them |
+
+On non-x86 hosts `portable` emits no `-march`/`-mtune` at all — the generic ABI
+baseline is already portable there.
+
+`GCC_OPTS_MARCH` is the escape hatch. It defaults to empty ("the profile
+decides"); any non-empty value overrides the profile's `-march`, and the profile
+then contributes no `-mtune`, because `-march=<cpu>` already implies
+`-mtune=<cpu>`. Use it to pin a cluster partition's ISA:
+
+    cmake -B build -DGCC_OPTS_MARCH=haswell
+
+### Preprocessing note
+
+gcc-opts adds `-cpp` only where CMake does not already drive preprocessing:
+never under Ninja (whose module-dependency scan preprocesses every Fortran
+target and compiles with `-fpreprocessed`), and under Makefiles only when the
+consuming target's `Fortran_PREPROCESS` property is unset. The check is a
+generator expression on the consuming target, so it does not matter when you set
+`CMAKE_Fortran_PREPROCESS`. It cannot see the **per-source** `Fortran_PREPROCESS`
+property — if you set that, pass `PREPROCESSOR OFF` and manage `-cpp` yourself.
 
 ## Modules
 
