@@ -64,12 +64,23 @@ foreach (flags_target IN ITEMS
     )
 endforeach ()
 
+# Pick the compiler version from whichever language the consumer enabled —
+# this test build enables both, Fortran first.
+if (CMAKE_Fortran_COMPILER_VERSION)
+    set(GUARD_GCC_VERSION "${CMAKE_Fortran_COMPILER_VERSION}")
+else ()
+    set(GUARD_GCC_VERSION "${CMAKE_CXX_COMPILER_VERSION}")
+endif ()
+
 add_test(NAME flag_contradiction_guard
         COMMAND ${CMAKE_COMMAND}
         -DFLAGS_DIR=${CMAKE_CURRENT_BINARY_DIR}/resolved-flags
         -DCONFIG=$<CONFIG>
         -DEXPECT_PROFILING_G=${ENABLE_PROFILING_SYMBOLS}
         -DEXPECT_MARCH=${GCC_OPTS_MARCH}
+        -DEXPECT_PROFILE=${GCC_OPTS_PROFILE}
+        -DEXPECT_GCC_VERSION=${GUARD_GCC_VERSION}
+        -DEXPECT_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/check_flag_contradictions.cmake
 )
 
